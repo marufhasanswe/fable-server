@@ -79,6 +79,13 @@ async function run() {
       res.send(result);
     });
 
+    // Single ebook get api
+    app.get("/api/books/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await ebooksCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
     // Ebook add api
     app.post("/api/books", verifyToken, writerVerify, async (req, res) => {
       const data = req.body;
