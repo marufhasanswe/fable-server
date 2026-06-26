@@ -47,7 +47,6 @@ const verifyToken = async (req, res, next) => {
     req.user = payload;
     next();
   } catch (err) {
-    console.log("Error:", err);
     return res.status(401).send("Unauthorized");
   }
 };
@@ -98,6 +97,40 @@ async function run() {
       const result = await ebooksCollection.insertOne(newEbook);
       res.send(result);
     });
+
+    // Ebook update api
+    app.patch("/api/books/:id", verifyToken, writerVerify, async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+
+      const update = {
+        $set: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      };
+
+      const result = await ebooksCollection.updateOne(
+        { _id: new ObjectId(id) },
+        update,
+      );
+
+      res.send(result);
+    });
+
+    // Ebook delete api
+    app.delete(
+      "/api/books/:id",
+      verifyToken,
+      writerVerify,
+      async (req, res) => {
+        const { id } = req.params;
+        const result = await ebooksCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      },
+    );
 
     await client.db("admin").command({ ping: 1 });
     console.log(
