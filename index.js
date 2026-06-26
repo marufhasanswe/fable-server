@@ -118,7 +118,7 @@ async function run() {
       res.send(result);
     });
 
-    // Ebook delete api
+    // Ebook delete api a
     app.delete(
       "/api/books/:id",
       verifyToken,
