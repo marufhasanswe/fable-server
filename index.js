@@ -68,10 +68,22 @@ async function run() {
     const bookmarksCollection = db.collection("bookmarks");
     const transactionsCollection = db.collection("transactions");
 
+    // Purchases get api
+    app.get("/api/books/purchases/:userId", async (req, res) => {
+      const { userId } = req.params;
+      const query = {};
+      if (userId) {
+        query.buyerId = userId;
+      }
+      const result = await purchasesCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // Ebook get api
     app.get("/api/books", async (req, res) => {
-      const userId = req.query.userId;
-      const query = { status: "published" };
+      const { userId } = req.query;
+      console.log(userId);
+      const query = {};
       if (userId) {
         query.writerId = userId;
       }
@@ -82,6 +94,7 @@ async function run() {
     // Single ebook get api
     app.get("/api/books/:id", async (req, res) => {
       const { id } = req.params;
+      console.log(id);
       const result = await ebooksCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
@@ -138,6 +151,17 @@ async function run() {
       },
     );
 
+    // Bookmarks ebook get api
+    app.get("/api/books/bookmarks/:userId", async (req, res) => {
+      const { userId } = req.params;
+      const query = {};
+      if (userId) {
+        query.userId = userId;
+      }
+      const result = await bookmarksCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // Bookmark add api
     app.post("/api/books/bookmarks", verifyToken, async (req, res) => {
       const data = req.body;
@@ -169,6 +193,17 @@ async function run() {
       return res.json({ purchased: exist });
     });
 
+    // purchase history get api
+    app.get("/api/purchases/history/:userId", async (req, res) => {
+      const { userId } = req.params;
+      const query = {};
+      if (userId) {
+        query.buyerId = userId;
+      }
+      const result = await purchasesCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // purchases add api
     app.post("/api/books/purchases", verifyToken, async (req, res) => {
       const data = req.body;
@@ -178,6 +213,8 @@ async function run() {
         buyerId: data.buyerId,
         buyerEmail: data.buyerEmail,
         writerId: data.writerId,
+        writerName: data.writerName,
+        status: "completed",
         amount: Number(data.amount),
         stripeSessionId: data.session_id,
         createdAt: new Date(),
