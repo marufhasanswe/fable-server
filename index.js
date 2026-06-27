@@ -71,7 +71,7 @@ async function run() {
     // Ebook get api
     app.get("/api/books", async (req, res) => {
       const userId = req.query.userId;
-      const query = {};
+      const query = { status: "published" };
       if (userId) {
         query.writerId = userId;
       }
@@ -116,7 +116,6 @@ async function run() {
           updatedAt: new Date(),
         },
       };
-
       const result = await ebooksCollection.updateOne(
         { _id: new ObjectId(id) },
         update,
@@ -138,6 +137,51 @@ async function run() {
         res.send(result);
       },
     );
+
+    // purchase check api
+    app.get("/api/purchase/check/:ebookId", verifyToken, async (req, res) => {
+      const { ebookId } = req.params;
+      const userId = req.user.id;
+      console.log(ebookId, userId);
+      const exist = await purchasesCollection.findOne({
+        ebookId: ebookId,
+        buyerId: userId,
+      });
+      return res.json({ purchased: exist });
+    });
+
+    // purchases add api
+    app.post("/api/books/purchases", async (req, res) => {
+      const data = req.body;
+      const newPurchase = {
+        ebookId: data.ebookId,
+        ebookTitle: data.ebookTitle,
+        buyerId: data.buyerId,
+        buyerEmail: data.buyerEmail,
+        writerId: data.writerId,
+        amount: Number(data.amount),
+        stripeSessionId: data.session_id,
+        createdAt: new Date(),
+      };
+      console.log(newPurchase);
+      const isExist = await purchasesCollection.findOne({
+        stripeSessionId: data.session_id,
+      });
+      if (isExist) {
+        return res.status(400).json({ msg: "Already purchased" });
+      }
+      const result = await purchasesCollection.insertOne(newPurchase);
+
+      await ebooksCollection.updateOne(
+        { _id: new ObjectId(data.ebookId) },
+        {
+          $inc: {
+            totalSales: 1,
+          },
+        },
+      );
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
