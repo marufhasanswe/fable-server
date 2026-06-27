@@ -151,7 +151,7 @@ async function run() {
     });
 
     // purchases add api
-    app.post("/api/books/purchases", async (req, res) => {
+    app.post("/api/books/purchases", verifyToken, async (req, res) => {
       const data = req.body;
       const newPurchase = {
         ebookId: data.ebookId,
@@ -163,7 +163,6 @@ async function run() {
         stripeSessionId: data.session_id,
         createdAt: new Date(),
       };
-      console.log(newPurchase);
       const isExist = await purchasesCollection.findOne({
         stripeSessionId: data.session_id,
       });
@@ -180,7 +179,21 @@ async function run() {
           },
         },
       );
-      res.send(result);
+
+      // transactions history
+      const newTransaction = {
+        type: "purchase",
+        amount: Number(data.amount),
+        userId: data.buyerId,
+        userEmail: data.buyerEmail,
+        stripeSessionId: data.session_id,
+        status: "completed",
+        writerId: data.writerId,
+        createdAt: new Date(),
+      };
+      await transactionsCollection.insertOne(newTransaction);
+
+      return res.json({ msg: "Purchased successfully", ok: true });
     });
 
     await client.db("admin").command({ ping: 1 });
