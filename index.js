@@ -138,11 +138,30 @@ async function run() {
       },
     );
 
+    // Bookmark add api
+    app.post("/api/books/bookmarks", verifyToken, async (req, res) => {
+      const data = req.body;
+      const userId = req.user.id;
+      const newBookmark = {
+        ebookId: data.ebookId,
+        userId: userId,
+        createdAt: new Date(),
+      };
+      const isExist = await bookmarksCollection.findOne({
+        ebookId: data.ebookId,
+        userId: userId,
+      });
+      if (isExist) {
+        return res.status(400).json({ msg: "Already bookmarked" });
+      }
+      const result = await bookmarksCollection.insertOne(newBookmark);
+      res.send(result);
+    });
+
     // purchase check api
     app.get("/api/purchase/check/:ebookId", verifyToken, async (req, res) => {
       const { ebookId } = req.params;
       const userId = req.user.id;
-      console.log(ebookId, userId);
       const exist = await purchasesCollection.findOne({
         ebookId: ebookId,
         buyerId: userId,
