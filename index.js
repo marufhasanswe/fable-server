@@ -67,17 +67,7 @@ async function run() {
     const purchasesCollection = db.collection("purchases");
     const bookmarksCollection = db.collection("bookmarks");
     const transactionsCollection = db.collection("transactions");
-
-    // Purchases get api
-    // app.get("/api/books/purchases/:userId", async (req, res) => {
-    //   const { userId } = req.params;
-    //   const query = {};
-    //   if (userId) {
-    //     query.buyerId = userId;
-    //   }
-    //   const result = await purchasesCollection.find(query).toArray();
-    //   res.send(result);
-    // });
+    const usersCollection = db.collection("user");
 
     // Purchases get api
     app.get("/api/books/purchases/:userId", async (req, res) => {
@@ -391,6 +381,178 @@ async function run() {
         ])
         .toArray();
       res.send(result);
+    });
+
+    // Admin dashboard stats api
+
+    app.get("/api/admin/dashboard", async (req, res) => {
+      try {
+        /*
+    ==========================
+    USERS
+    ==========================
+    */
+
+        const totalUsers = await usersCollection.countDocuments({
+          role: "user",
+        });
+
+        const totalWriters = await usersCollection.countDocuments({
+          role: "writer",
+        });
+
+        /*
+    ==========================
+    SALES + REVENUE
+    ==========================
+    */
+
+        const salesResult = await purchasesCollection
+          .aggregate([
+            {
+              $match: {
+                status: "completed",
+              },
+            },
+
+            {
+              $group: {
+                _id: null,
+
+                totalSales: {
+                  $sum: 1,
+                },
+
+                revenue: {
+                  $sum: "$amount",
+                },
+              },
+            },
+          ])
+          .toArray();
+
+        const totalSales = salesResult[0]?.totalSales || 0;
+
+        const revenue = salesResult[0]?.revenue || 0;
+
+        /*
+    ==========================
+    MONTHLY SALES CHART
+    ==========================
+    */
+
+        const monthlySales = await purchasesCollection
+          .aggregate([
+            {
+              $match: {
+                status: "completed",
+              },
+            },
+
+            {
+              $group: {
+                _id: {
+                  month: {
+                    $month: "$createdAt",
+                  },
+                },
+
+                sales: {
+                  $sum: "$amount",
+                },
+              },
+            },
+
+            {
+              $sort: {
+                "_id.month": 1,
+              },
+            },
+          ])
+          .toArray();
+
+        const monthNames = [
+          "",
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+
+        const monthlySalesChart = monthlySales.map((item) => ({
+          month: monthNames[item._id.month],
+
+          sales: item.sales,
+        }));
+
+        /*
+    ==========================
+    EBOOK GENRE PIE CHART
+    ==========================
+    */
+
+        const genreData = await ebooksCollection
+          .aggregate([
+            {
+              $match: {
+                status: "published",
+              },
+            },
+
+            {
+              $group: {
+                _id: "$genre",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ])
+          .toArray();
+
+        const ebooksByGenre = genreData.map((item) => ({
+          name: item._id,
+
+          value: item.count,
+        }));
+
+        res.send({
+          success: true,
+
+          stats: {
+            totalUsers,
+
+            totalWriters,
+
+            totalSales,
+
+            revenue,
+          },
+
+          charts: {
+            monthlySales: monthlySalesChart,
+
+            ebooksByGenre,
+          },
+        });
+      } catch (error) {
+        console.log(error);
+
+        res.status(500).send({
+          success: false,
+
+          message: "Dashboard data error",
+        });
+      }
     });
 
     await client.db("admin").command({ ping: 1 });
