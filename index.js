@@ -69,20 +69,65 @@ async function run() {
     const transactionsCollection = db.collection("transactions");
 
     // Purchases get api
+    // app.get("/api/books/purchases/:userId", async (req, res) => {
+    //   const { userId } = req.params;
+    //   const query = {};
+    //   if (userId) {
+    //     query.buyerId = userId;
+    //   }
+    //   const result = await purchasesCollection.find(query).toArray();
+    //   res.send(result);
+    // });
+
+    // Purchases get api
     app.get("/api/books/purchases/:userId", async (req, res) => {
       const { userId } = req.params;
-      const query = {};
-      if (userId) {
-        query.buyerId = userId;
-      }
-      const result = await purchasesCollection.find(query).toArray();
+      console.log(userId);
+
+      const result = await purchasesCollection
+        .aggregate([
+          {
+            $match: {
+              buyerId: userId,
+            },
+          },
+          {
+            $addFields: {
+              ebookObjectId: {
+                $toObjectId: "$ebookId",
+              },
+            },
+          },
+
+          {
+            $lookup: {
+              from: "ebooks",
+              localField: "ebookObjectId",
+              foreignField: "_id",
+              as: "ebook",
+            },
+          },
+          {
+            $unwind: "$ebook",
+          },
+          {
+            $project: {
+              ebookId: 1,
+              ebookTitle: 1,
+              amount: 1,
+              status: 1,
+              createdAt: 1,
+              coverImage: "$ebook.coverImage",
+            },
+          },
+        ])
+        .toArray();
       res.send(result);
     });
 
     // Ebook get api
     app.get("/api/books", async (req, res) => {
       const { userId } = req.query;
-      console.log(userId);
       const query = {};
       if (userId) {
         query.writerId = userId;
@@ -152,13 +197,64 @@ async function run() {
     );
 
     // Bookmarks ebook get api
+    // app.get("/api/books/bookmarks/:userId", async (req, res) => {
+    //   const { userId } = req.params;
+    //   const query = {};
+    //   if (userId) {
+    //     query.userId = userId;
+    //   }
+    //   const result = await bookmarksCollection.find(query).toArray();
+    //   res.send(result);
+    // });
+
+    // Bookmarks ebook get api
     app.get("/api/books/bookmarks/:userId", async (req, res) => {
       const { userId } = req.params;
-      const query = {};
-      if (userId) {
-        query.userId = userId;
-      }
-      const result = await bookmarksCollection.find(query).toArray();
+
+      const result = await bookmarksCollection
+        .aggregate([
+          {
+            $match: {
+              userId: userId,
+            },
+          },
+
+          {
+            $addFields: {
+              ebookObjectId: {
+                $toObjectId: "$ebookId",
+              },
+            },
+          },
+
+          {
+            $lookup: {
+              from: "ebooks",
+              localField: "ebookObjectId",
+              foreignField: "_id",
+              as: "ebook",
+            },
+          },
+
+          {
+            $unwind: "$ebook",
+          },
+
+          {
+            $project: {
+              _id: 1,
+              createdAt: 1,
+
+              ebookId: 1,
+
+              title: "$ebook.title",
+              coverImage: "$ebook.coverImage",
+              writerName: "$ebook.writerName",
+            },
+          },
+        ])
+        .toArray();
+
       res.send(result);
     });
 
