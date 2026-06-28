@@ -197,17 +197,6 @@ async function run() {
     );
 
     // Bookmarks ebook get api
-    // app.get("/api/books/bookmarks/:userId", async (req, res) => {
-    //   const { userId } = req.params;
-    //   const query = {};
-    //   if (userId) {
-    //     query.userId = userId;
-    //   }
-    //   const result = await bookmarksCollection.find(query).toArray();
-    //   res.send(result);
-    // });
-
-    // Bookmarks ebook get api
     app.get("/api/books/bookmarks/:userId", async (req, res) => {
       const { userId } = req.params;
 
@@ -275,6 +264,17 @@ async function run() {
         return res.status(400).json({ msg: "Already bookmarked" });
       }
       const result = await bookmarksCollection.insertOne(newBookmark);
+      res.send(result);
+    });
+
+    // Bookmark delete api
+    app.delete("/api/books/bookmarks/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const result = await bookmarksCollection.deleteOne({
+        _id: new ObjectId(id),
+        userId: userId,
+      });
       res.send(result);
     });
 
