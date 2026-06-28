@@ -116,6 +116,7 @@ async function run() {
               ebookTitle: 1,
               amount: 1,
               status: 1,
+              writerName: 1,
               createdAt: 1,
               coverImage: "$ebook.coverImage",
             },
@@ -346,6 +347,50 @@ async function run() {
       await transactionsCollection.insertOne(newTransaction);
 
       return res.json({ msg: "Purchased successfully", ok: true });
+    });
+
+    // Sales history get api
+    app.get("/api/sales/history/:userId", async (req, res) => {
+      const { userId } = req.params;
+
+      const result = await purchasesCollection
+        .aggregate([
+          {
+            $match: {
+              writerId: userId,
+            },
+          },
+          {
+            $addFields: {
+              buyerObjectId: {
+                $toObjectId: "$buyerId",
+              },
+            },
+          },
+
+          {
+            $lookup: {
+              from: "user",
+              localField: "buyerObjectId",
+              foreignField: "_id",
+              as: "user",
+            },
+          },
+          {
+            $unwind: "$user",
+          },
+          { $sort: { createdAt: -1 } },
+          {
+            $project: {
+              ebookTitle: 1,
+              amount: 1,
+              createdAt: 1,
+              buyerName: "$user.name",
+            },
+          },
+        ])
+        .toArray();
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
