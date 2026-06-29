@@ -53,10 +53,11 @@ const verifyToken = async (req, res, next) => {
 
 const writerVerify = async (req, res, next) => {
   const user = req.user;
-  if (user.role !== "writer") {
+  if (user.role === "writer" || user.role === "admin") {
+    next();
+  } else {
     return res.status(403).json({ msg: "Forbidden" });
   }
-  next();
 };
 
 async function run() {
@@ -72,8 +73,6 @@ async function run() {
     // Purchases get api
     app.get("/api/books/purchases/:userId", async (req, res) => {
       const { userId } = req.params;
-      console.log(userId);
-
       const result = await purchasesCollection
         .aggregate([
           {
@@ -553,6 +552,12 @@ async function run() {
           message: "Dashboard data error",
         });
       }
+    });
+
+    //Get all Transactions
+    app.get("/api/transactions", async (req, res) => {
+      const result = await transactionsCollection.find({}).toArray();
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
