@@ -51,6 +51,7 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+// verify writer & admin
 const writerVerify = async (req, res, next) => {
   const user = req.user;
   if (user.role === "writer" || user.role === "admin") {
@@ -58,6 +59,15 @@ const writerVerify = async (req, res, next) => {
   } else {
     return res.status(403).json({ msg: "Forbidden" });
   }
+};
+
+//verify admin
+const adminVerify = async (req, res, next) => {
+  const user = req.user;
+  if (user.role !== "admin") {
+    return res.status(403).json({ msg: "Forbidden" });
+  }
+  next();
 };
 
 async function run() {
@@ -557,6 +567,38 @@ async function run() {
     //Get all Transactions
     app.get("/api/transactions", async (req, res) => {
       const result = await transactionsCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    //Get all users
+    app.get("/api/users", async (req, res) => {
+      const result = await usersCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    // Update user api
+    app.patch("/api/users/:id", verifyToken, adminVerify, async (req, res) => {
+      const { id } = req.params;
+      const data = req.body;
+      const update = {
+        $set: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      };
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        update,
+      );
+      res.send(result);
+    });
+
+    // User delete api
+    app.delete("/api/users/:id", verifyToken, adminVerify, async (req, res) => {
+      const { id } = req.params;
+      const result = await usersCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
